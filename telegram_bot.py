@@ -11,7 +11,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 # Самый простой обработчик ВСЕХ сообщений
-[dp.message](workspace://dp.message)()
+dp.message()
 async def handle_all(message: types.Message):
     print(f"Получено сообщение: {message.text}")
     await message.answer(f"Получил: {message.text}")
