@@ -1,28 +1,31 @@
+import asyncio
 import logging
 import os
-import tempfile
 from pathlib import Path
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import Command
+from aiogram.types import Message, FSInputFile
+from aiogram.enums import ParseMode
 
 # Настройка логирования
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Конфигурация
-TOKEN = "8622779229:AAHBdY80b2kTFTqhaC_AJBAyN182XYyXI-s"  # Замените на ваш новый токен
+TOKEN = "8622779229:AAHBdY80b2kTFTqhaC_AJBAyN182XYyXI-s"  # Замените на ваш токен
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-SUPPORTED_FORMATS = ['.jpg', '.jpeg', '.png', '.webp']
 
 # Создаем папку для временных файлов
 TEMP_DIR = Path("temp_files")
 TEMP_DIR.mkdir(exist_ok=True)
 
+# Инициализация бота
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
 # Команда /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+dp.message(Command("start"))
+async def cmd_start(message: Message):
     welcome_text = """
     👋 *Добро пожаловать в Photo Animator Bot!*
     
@@ -38,94 +41,87 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     *Ограничения:*
     • Максимальный размер: 10 MB
-    • Рекомендуемое разрешение: до 2000x2000px
     
     *Команды:*
     /start - Начать работу
-    /help - Помощь и инструкции
+    /help - Помощь
     /status - Статус бота
     
     Отправьте фото, чтобы начать!
     """
-    await update.message.reply_text(welcome_text, parse_mode='Markdown')
+    await message.answer(welcome_text, parse_mode=ParseMode.MARKDOWN)
 
 # Команда /help
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+dp.message(Command("help"))
+async def cmd_help(message: Message):
     help_text = """
     *📖 Помощь по использованию бота*
     
     *Как отправить фото:*
-    1. Нажмите на скрепку (📎) в поле ввода
+    1. Нажмите на скрепку (📎)
     2. Выберите "Фото" или "Галерея"
     3. Выберите фотографию
     4. Отправьте
     
-    *Что происходит после отправки:*
-    1. Я проверяю формат и размер фото
-    2. Сохраняю фото для обработки
-    3. Отправляю на сервер оживления
-    4. Возвращаю вам результат
-    
-    *Возможные проблемы:*
-    • Фото слишком большое → уменьшите размер
-    • Неподдерживаемый формат → конвертируйте в JPG/PNG
-    • Долгая обработка → подождите немного
+    *Что происходит:*
+    1. Я проверяю фото
+    2. Сохраняю для обработки
+    3. Отправляю на сервер
+    4. Возвращаю результат
     
     *Техническая поддержка:*
     Если возникли проблемы, опишите их подробно.
     """
-    await update.message.reply_text(help_text, parse_mode='Markdown')
+    await message.answer(help_text, parse_mode=ParseMode.MARKDOWN)
 
 # Команда /status
-async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+dp.message(Command("status"))
+async def cmd_status(message: Message):
     status_text = """
     *📊 Статус бота*
     
     ✅ Бот активен и работает
     📈 Готов к обработке фото
     ⏱️ Среднее время обработки: 30-60 сек
-    💾 Временные файлы: очищаются автоматически
     
     *Статистика:*
     • Фото обработано: 0 (пока нет данных)
-    • Среднее время: не определено
     • Доступность: 100%
     
     Бот работает в тестовом режиме.
-    Функция оживления фото доступна по подписке.
     """
-    await update.message.reply_text(status_text, parse_mode='Markdown')
+    await message.answer(status_text, parse_mode=ParseMode.MARKDOWN)
 
 # Обработка фото
-async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+dp.message(F.photo)
+async def handle_photo(message: Message):
     try:
-        user = update.message.from_user
+        user = message.from_user
         logger.info(f"Фото от пользователя {user.id} ({user.username})")
         
         # Отправляем сообщение о начале обработки
-        processing_msg = await update.message.reply_text(
-            "📥 Получил ваше фото! Проверяю...",
-            parse_mode='Markdown'
-        )
+        processing_msg = await message.answer("📥 Получил ваше фото! Проверяю...")
         
         # Получаем фото (самое высокое качество)
-        photo_file = await update.message.photo[-1].get_file()
+        photo = message.photo[-1]
+        file_info = await bot.get_file(photo.file_id)
         
         # Проверяем размер файла
-        if photo_file.file_size > MAX_FILE_SIZE:
+        if photo.file_size > MAX_FILE_SIZE:
             await processing_msg.edit_text(
                 "❌ *Фото слишком большое!*\n\n"
                 f"Максимальный размер: {MAX_FILE_SIZE // (1024*1024)} MB\n"
-                f"Ваш файл: {photo_file.file_size // (1024*1024)} MB\n\n"
-                "Пожалуйста, уменьшите размер фото и попробуйте снова."
+                f"Ваш файл: {photo.file_size // (1024*1024)} MB\n\n"
+                "Пожалуйста, уменьшите размер фото.",
+                parse_mode=ParseMode.MARKDOWN
             )
             return
         
         await processing_msg.edit_text("✅ Фото прошло проверку! Сохраняю...")
         
-        # Сохраняем фото во временный файл
-        temp_file = TEMP_DIR / f"photo_{user.id}_{update.message.message_id}.jpg"
-        await photo_file.download_to_drive(temp_file)
+        # Сохраняем фото
+        temp_file = TEMP_DIR / f"photo_{user.id}_{message.message_id}.jpg"
+        await bot.download_file(file_info.file_path, temp_file)
         
         await processing_msg.edit_text(
             "🔄 *Фото сохранено!*\n\n"
@@ -133,97 +129,56 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "*Для доступа к полной функциональности:*\n"
             "1. Оформите подписку\n"
             "2. Получите API ключ\n"
-            "3. Интегрируйте в код бота\n\n"
-            "А пока я могу только сохранять фото для тестирования."
+            "3. Интегрируйте в код бота",
+            parse_mode=ParseMode.MARKDOWN
         )
         
-        # Здесь будет вызов API оживления фото после подписки
-        # Пример структуры:
-        # animated_video = await animate_photo_api(temp_file)
-        # await update.message.reply_video(animated_video, caption="Ваше оживленное фото! ✨")
-        
         # Информация о файле
-        file_info = f"""
+        file_info_text = f"""
         *Информация о файле:*
         • Размер: {temp_file.stat().st_size // 1024} KB
         • Путь: `{temp_file}`
         • Временный файл будет удален
         """
         
-        await update.message.reply_text(file_info, parse_mode='Markdown')
+        await message.answer(file_info_text, parse_mode=ParseMode.MARKDOWN)
         
     except Exception as e:
         logger.error(f"Ошибка при обработке фото: {e}")
-        await update.message.reply_text(
+        await message.answer(
             "❌ *Произошла ошибка!*\n\n"
-            "Пожалуйста, попробуйте еще раз или отправьте другое фото.\n"
-            f"Ошибка: {str(e)}"
+            "Пожалуйста, попробуйте еще раз.",
+            parse_mode=ParseMode.MARKDOWN
         )
 
 # Обработка документов (фото как файл)
-async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    document = update.message.document
+dp.message(F.document)
+async def handle_document(message: Message):
+    document = message.document
     
     # Проверяем, является ли документ изображением
     if document.mime_type and document.mime_type.startswith('image/'):
-        await handle_photo(update, context)
+        await handle_photo(message)
     else:
-        await update.message.reply_text(
+        await message.answer(
             "❌ *Это не изображение!*\n\n"
-            "Пожалуйста, отправьте фото в формате JPG, PNG или JPEG."
+            "Пожалуйста, отправьте фото в формате JPG, PNG или JPEG.",
+            parse_mode=ParseMode.MARKDOWN
         )
 
-# Обработка ошибок
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.error(f"Ошибка: {context.error}")
-    
-    if update and update.message:
-        await update.message.reply_text(
-            "⚠️ *Произошла непредвиденная ошибка!*\n\n"
-            "Пожалуйста, попробуйте еще раз позже."
-        )
-
-# Очистка временных файлов
-def cleanup_temp_files():
-    """Очистка старых временных файлов"""
-    try:
-        for file in TEMP_DIR.glob("*"):
-            if file.stat().st_mtime < (time.time() - 3600):  # Старше 1 часа
-                file.unlink()
-    except Exception as e:
-        logger.error(f"Ошибка при очистке файлов: {e}")
-
-# Основная функция
-def main():
-    # Проверяем токен
-    if TOKEN == "ВАШ_НОВЫЙ_ТОКЕН_ЗДЕСЬ":
-        print("❌ ОШИБКА: Замените TOKEN на ваш токен бота!")
-        print("Получите новый токен в <span style="color: hsl(var(--primary)); font-weight: 500;">@BotFather</span> командой /newbot")
-        return
-    
-    # Создаем приложение
-    application = Application.builder().token(TOKEN).build()
-    
-    # Добавляем обработчики команд
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("status", status_command))
-    
-    # Добавляем обработчики сообщений
-    application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    application.add_handler(MessageHandler(filters.Document.IMAGE, handle_document))
-    
-    # Обработчик ошибок
-    application.add_error_handler(error_handler)
-    
-    # Запускаем бота
+# Запуск бота
+async def main():
     print("🤖 Бот запускается...")
     print(f"📁 Временная папка: {TEMP_DIR.absolute()}")
     print("⚡ Используйте Ctrl+C для остановки")
     
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    await dp.start_polling(bot)
 
-if __name__ == '__main__':
-    import time
-    cleanup_temp_files()  # Очищаем старые файлы при запуске
-    main()
+if __name__ == "__main__":
+    # Замените токен на ваш
+    if TOKEN == "ВАШ_ТОКЕН_ЗДЕСЬ":
+        print("❌ ОШИБКА: Замените TOKEN на ваш токен бота!")
+        print("Получите новый токен в <span style="color: hsl(var(--primary)); font-weight: 500;">@BotFather</span> командой /newbot")
+    else:
+        asyncio.run(main())
+
