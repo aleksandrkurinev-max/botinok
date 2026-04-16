@@ -108,34 +108,6 @@ async def handle_text(message: types.Message):
     if message.text and not message.text.startswith('/'):
         await message.answer("Отправьте мне фото или используйте команды:\n/start\n/help\n/test")
 
-# ================= ЗАПУСК БОТА =================
-async def main():
-    print("=" * 50)
-    print("🤖 TELEGRAM BOT - ЧИСТАЯ ВЕРСИЯ")
-    print("=" * 50)
-    
-    print(f"\n🔑 Токен: {BOT_TOKEN[:15]}...")
-    print("📡 Проверяю подключение...")
-    
-    try:
-        bot_info = await bot.get_me()
-        
-        print(f"✅ Успех! Бот: @{bot_info.username}")
-        print(f"👤 Имя: {bot_info.first_name}")
-        
-        print("\n⚡ Бот запущен!")
-        print(f"📱 Найдите в Telegram: @{bot_info.username}")
-        print("🔴 Ctrl+C для остановки")
-        print("\n" + "=" * 50)
-        
-        await dp.start_polling(bot)
-        
-    except Exception as e:
-        print(f"\n❌ Ошибка: {e}")
-        print("\n🔧 Проверьте:")
-        print("1. Токен правильный?")
-        print("2. VPN включен?")
-        print("3. Интернет работает?")
 
 # ================= ЗАПУСК =================
 if __name__ == "__main__":
