@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ТОКЕН БОТА
-BOT_TOKEN = "8622779229:AAHBdY80b2kTFTqhaC_AJBAyN182XYyXI-s"
+BOT_TOKEN = "8622779229:AAFsiAv_DO6r49KLmgGmdDXpPHEtU4vJXYo"
 
 # ================= НАСТРОЙКИ ПРОКСИ =================
 # Вариант 1: Без прокси (если VPN включен)
