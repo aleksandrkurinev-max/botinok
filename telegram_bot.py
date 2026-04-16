@@ -135,17 +135,12 @@ async def main():
     print("=" * 50)
     
     # Проверка токена
-    if BOT_TOKEN == "ВАШ_ТОКЕН_ЗДЕСЬ":
-        print("\n❌ ОШИБКА: Замените BOT_TOKEN на ваш токен!")
-        print("\nКак получить токен:")
-        print("1. Откройте Telegram")
-        print("2. Найдите <span style="color: hsl(var(--primary)); font-weight: 500;">@BotFather</span>")
-        print("3. Создайте бота командой /newbot")
-        print("4. Скопируйте токен (выглядит так: 1234567890:ABCdef...)")
-        print("5. Вставьте в код вместо 'ВАШ_ТОКЕН_ЗДЕСЬ'")
+    if BOT_TOKEN == "8622779229:AAHBdY80b2kTFTqhaC_AJBAyN182XYyXI-s":
+        print(f"\n✅ Токен: {BOT_TOKEN[:15]}...")
+    else:
+        print("\n❌ ОШИБКА: Проверьте токен!")
         return
     
-    print(f"\n✅ Токен: {BOT_TOKEN[:15]}...")
     print("📱 Откройте Telegram -> найдите вашего бота")
     print("⚡ Напишите /start")
     print("📸 Отправьте фото для теста")
